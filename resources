@@ -1,9 +1,12 @@
 A list of useful resources.
 
-For Part F:
+For Part F, G, H & I:
 
 Lighting in the vertex and fragment shader for openGL
 http://in2gpu.com/2014/06/19/lighting-vertex-fragment-shader/
 
 Specular Highlighting in OpenGL:
 https://en.wikibooks.org/wiki/GLSL_Programming/GLUT/Specular_Highlights
+
+Multiple lights and directional lights:
+http://www.tomdalling.com/blog/modern-opengl/08-even-more-lighting-directional-lights-spotlights-multiple-lights/
