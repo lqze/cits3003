@@ -260,15 +260,16 @@ static void addObject(int id) {
                      
                      
     glutPostRedisplay();
-    
-    
 }
 
 //------Delete an object from the scene---------------------------------------
 static void deleteObject(void) {
 	if (nObjects == 3) return;
-	
-	toolObj = currObject = --nObjects-1;
+		
+	toolObj = currObject = -1;
+	if (--nObjects-1 > 3) {
+		currObject = nObjects-1;
+	}
 	
 	glutPostRedisplay();
 	doRotate();
@@ -284,6 +285,50 @@ static void duplicateObject(int id) {
 	setToolCallbacks(adjustLocXZ, camRotZ(),
                      adjustScaleY, mat2(0.05, 0, 0, 10.0) );
 	glutPostRedisplay();
+}
+
+//------Part K: load scene into memory-----------------------------------------
+static void loadScene(int id) {
+	char fname[64];
+	sprintf(fname, "save%d.obj", id);
+
+	FILE *saveFile = fopen(fname, "rb");
+	if (saveFile == NULL) {
+		fprintf(stderr, "Error: failed to open file: %s\n", fname);
+		return;
+	}
+	
+	fread(&viewDist, sizeof(float), 1, saveFile);
+	fread(&camRotSidewaysDeg, sizeof(float), 1, saveFile);
+	fread(&camRotUpAndOverDeg, sizeof(float), 1, saveFile);
+	fread(&nObjects, sizeof(int), 1, saveFile);
+	fread(sceneObjs, sizeof(SceneObject), nObjects, saveFile);
+	
+	toolObj = -1;
+	currObject = nObjects-1;
+	doRotate();
+	
+	fclose(saveFile);
+}
+
+//------Part K: save scene to disk---------------------------------------------
+static void saveScene(int id) {
+	char fname[64];
+	sprintf(fname, "save%d.obj", id);
+
+	FILE *saveFile = fopen(fname, "wb");
+	if (saveFile == NULL) {
+		fprintf(stderr, "Error: failed to save file: %s\n", fname);
+		return;
+	}
+	
+	fwrite(&viewDist, sizeof(float), 1, saveFile);
+	fwrite(&camRotSidewaysDeg, sizeof(float), 1, saveFile);
+	fwrite(&camRotUpAndOverDeg, sizeof(float), 1, saveFile);
+	fwrite(&nObjects, sizeof(int), 1, saveFile);
+	fwrite(sceneObjs, sizeof(SceneObject), nObjects, saveFile);
+	
+	fclose(saveFile);
 }
 
 
@@ -328,8 +373,8 @@ void init( void ) {
     sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
     
     addObject(55); // Sphere for the second light
-    sceneObjs[2].loc = vec4(-2.0, 2.0, -2.0, 1.0);
-    sceneObjs[2].scale = 0.1;
+    sceneObjs[2].loc = vec4(-2.0, 2.0, 1.0, 1.0);
+    sceneObjs[2].scale = 0.2;
     sceneObjs[2].texId = 0;
     sceneObjs[2].brightness = 0.4;
 
@@ -365,7 +410,8 @@ void drawMesh(SceneObject sceneObj) {
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 	// for part B: combine rotation around X Y Z axes.
-	mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateX(sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) * RotateZ(sceneObj.angles[2]);
+	mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * 
+	             RotateX(sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) * RotateZ(sceneObj.angles[2]);
 
     // Set the model-view matrix for the shaders
     glUniformMatrix4fv( modelViewU, 1, GL_TRUE, view * model );
@@ -398,12 +444,15 @@ void display( void ) {
 
     glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition1"), 1, lightPosition1); CheckError();
     glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition2"), 1, lightPosition2); CheckError();            
-                
-
+    glUniform3fv( glGetUniformLocation(shaderProgram, "rgb1"), 1, lightObj1.rgb); CheckError();
+    glUniform3fv( glGetUniformLocation(shaderProgram, "rgb2"), 1, lightObj2.rgb); CheckError();               
+	glUniform1f( glGetUniformLocation(shaderProgram, "brightness1"), lightObj1.brightness); CheckError();
+    glUniform1f( glGetUniformLocation(shaderProgram, "brightness2"), lightObj2.brightness); CheckError();   
+    
     for (int i=0; i < nObjects; i++) {
         SceneObject so = sceneObjs[i];
 
-        vec3 rgb = so.rgb * lightObj1.rgb * so.brightness * lightObj1.brightness * 2.0;
+        vec3 rgb = so.rgb * so.brightness * 2.0;
         
         glUniform3fv( glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb ); CheckError();
         glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb ); CheckError();
@@ -440,28 +489,29 @@ static void groundMenu(int id) {
 }
 
 static void adjustBrightnessY(vec2 by) {
-    sceneObjs[toolObj].brightness+=by[0];
+	if (toolObj == 2) by[0] *= 0.2f;
+	sceneObjs[toolObj].brightness=max(0.0f, sceneObjs[toolObj].brightness + by[0]); 
     sceneObjs[toolObj].loc[1]+=by[1];
 }
 
 static void adjustRedGreen(vec2 rg) {
-    sceneObjs[toolObj].rgb[0]+=rg[0];
-    sceneObjs[toolObj].rgb[1]+=rg[1];
+    sceneObjs[toolObj].rgb[0]=max(0.0f, sceneObjs[toolObj].rgb[0] + rg[0]);
+    sceneObjs[toolObj].rgb[1]=max(0.0f, sceneObjs[toolObj].rgb[1] + rg[1]);
 }
 
 static void adjustBlueBrightness(vec2 bl_br) {
-    sceneObjs[toolObj].rgb[2]+=bl_br[0];
-    sceneObjs[toolObj].brightness+=bl_br[1];
+    sceneObjs[toolObj].rgb[2]=max(0.0f, sceneObjs[toolObj].rgb[2] + bl_br[0]);
+    sceneObjs[toolObj].brightness=max(0.0f, sceneObjs[toolObj].brightness + bl_br[1]);
 }
 
 static void adjustAmbientDiffuse(vec2 ad) {
-    sceneObjs[toolObj].ambient += ad[0];
-	sceneObjs[toolObj].diffuse += ad[1];
+    sceneObjs[toolObj].ambient=max(0.0f, sceneObjs[toolObj].ambient + ad[0]);
+	sceneObjs[toolObj].diffuse=max(0.0f, sceneObjs[toolObj].diffuse + ad[1]);
 }
 
 static void adjustSpecularShine(vec2 ss) {
- 	sceneObjs[toolObj].specular += ss[0];
-	sceneObjs[toolObj].shine += ss[1];
+ 	sceneObjs[toolObj].specular=max(0.0f, sceneObjs[toolObj].specular + ss[0]);
+	sceneObjs[toolObj].shine=max(0.0f, sceneObjs[toolObj].shine= + ss[1]);
 }
 
 static void lightMenu(int id) {
@@ -470,7 +520,6 @@ static void lightMenu(int id) {
         toolObj = 1;
         setToolCallbacks(adjustLocXZ, camRotZ(),
                          adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
-
     }
     else if (id >= 71 && id <= 74) {
         toolObj = 1;
@@ -582,6 +631,16 @@ static void makeMenu() {
     glutAddMenuEntry("R/G/B/All Light 1",71);
     glutAddMenuEntry("Move Light 2",80);
     glutAddMenuEntry("R/G/B/All Light 2",81);
+    
+    int entries = 20;
+    char scenes[entries][128];
+    for (int i = 0; i < entries; i++)
+		sprintf(scenes[i], "Scene%d", i+1);
+	int loadMenuId = createArrayMenu(entries, scenes, loadScene);
+	int saveMenuId = createArrayMenu(entries, scenes, saveScene);
+	int loadSaveMenuId = glutCreateMenu(NULL);
+	glutAddSubMenu("Load Scene", loadMenuId);
+	glutAddSubMenu("Save Scene", saveMenuId);
 
     glutCreateMenu(mainmenu);
     glutAddMenuEntry("Rotate/Move Camera",50);
@@ -594,6 +653,7 @@ static void makeMenu() {
     glutAddSubMenu("Texture",texMenuId);
     glutAddSubMenu("Ground Texture",groundMenuId);
     glutAddSubMenu("Lights",lightMenuId);
+    glutAddSubMenu("Load/Save Scene", loadSaveMenuId);
     glutAddMenuEntry("EXIT", 99);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 }

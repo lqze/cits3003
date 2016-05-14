@@ -19,17 +19,17 @@ void main()
     // Transform vertex position into eye coordinates
     vec3 pos = (ModelView * vPosition).xyz;
     
-    // The vector to the first light from the vertex    
-    fL1 = LightPosition1.xyz - pos;
-    fL2 = LightPosition2.xyz - pos;
-    
-    // The vector to the eye/camera from the vertex
-	fE = -pos;
-    
     // Transform vertex normal into eye coordinates (assumes scaling is uniform across dimensions)
 	fN = (ModelView * vec4(vNormal, 0.0)).xyz;
-
-
+    
+    // The vector to the first light from the vertex    
+    fL1 = LightPosition1.xyz - pos;
+    fL2 = LightPosition2.xyz;
+    
+    // The vector to the eye/camera from the vertex
+	fE = pos;
+    
+    
     gl_Position = Projection * ModelView * vPosition;
     
     texCoord = vTexCoord;
