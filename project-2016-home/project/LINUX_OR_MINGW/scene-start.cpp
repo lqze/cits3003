@@ -32,7 +32,7 @@ mat4 projection; // Projection matrix - set in the reshape function
 mat4 view; // View matrix - set in the display function.
 
 // These are used to set the window title
-char lab[] = "Project1&2";
+char lab[] = "Project1";
 char *programName = NULL; // Set in main 
 int numDisplayCalls = 0; // Used to calculate the number of frames per second
 
@@ -265,12 +265,11 @@ static void addObject(int id) {
 //------Delete an object from the scene---------------------------------------
 static void deleteObject(void) {
 	if (nObjects == 3) return;
-		
-	toolObj = currObject = -1;
-	if (--nObjects-1 > 3) {
-		currObject = nObjects-1;
-	}
-	
+
+    toolObj = currObject = -1;
+    nObjects--;
+    if (nObjects > 3) currObject = nObjects-1;
+
 	glutPostRedisplay();
 	doRotate();
 }
@@ -279,7 +278,7 @@ static void deleteObject(void) {
 static void duplicateObject(int id) {
 	if (nObjects == maxObjects) return;
 		
-	sceneObjs[nObjects] = sceneObjs[currObject];
+	sceneObjs[nObjects] = sceneObjs[id];
 	toolObj = currObject = nObjects++;
 	
 	setToolCallbacks(adjustLocXZ, camRotZ(),
