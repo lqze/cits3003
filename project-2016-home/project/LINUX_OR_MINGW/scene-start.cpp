@@ -82,9 +82,11 @@ int currObject = -1; // The current object
 int toolObj = -1;    // The object currently being modified
 
 bool pauseAnim = false; // menu event
+int animType = 0; // default animType of 0 is straight line; 1 is bounce; 2 is <____>
 float timeAtPause = 0; // time object was paused
 float timeAtResume = 0;// time object was resumed
 float animStartTime = 0; // the time the initial animation started
+
 
 //------Texture loading-------------------------------------------------------
 //
@@ -487,13 +489,14 @@ void drawMesh(SceneObject sceneObj) {
     
     float POSE_TIME = 0.0;
     vec4 displacement = 0;
-    float yFunc = 0;
+    float yFunc = 0; // the graph func
     float numFrames = 0;
     // specify number of frames for animated objects
     if (sceneObj.meshId == 56) numFrames = 39;
     if (sceneObj.meshId == 57) numFrames = 40;
     if (sceneObj.meshId == 58) numFrames = 80;
     float period = sceneObj.moveDist / sceneObj.moveSpeed;
+    
     if (sceneObj.meshId >= 56) {
     //printf("%f period, %f movedist, %f movespeed", period, sceneObj.moveDist, sceneObj.moveSpeed);
 		float elapsedTime = 0.0;
@@ -504,9 +507,15 @@ void drawMesh(SceneObject sceneObj) {
 			elapsedTime = float ( glutGet(GLUT_ELAPSED_TIME) - animStartTime ) / 100.0;
 		}
 		POSE_TIME = fmod(elapsedTime, numFrames);
-                printf("%f POSE TIME, \t %f elapsed_time! \n", POSE_TIME, elapsedTime);
-                yFunc = abs(0.5*sceneObj.moveDist * sin(POSE_TIME/40*2*M_PI));
-		displacement = rotatexyz * vec4(0.0, 0.0, 0.5 * sceneObj.moveDist * sin(POSE_TIME / period * 2 * M_PI), 0.0);
+        printf("%f POSE TIME, \t %f elapsed_time! \n", POSE_TIME, elapsedTime);
+        
+        switch(animType){
+			case 1: yFunc = abs(0.5*sceneObj.moveDist * sin(POSE_TIME/40*2*M_PI)); break;
+			default: yFunc = 0.0; break;
+		}
+        
+        //yFunc = abs(0.5*sceneObj.moveDist * sin(POSE_TIME/40*2*M_PI));
+		displacement = rotatexyz * vec4(0.0, yFunc, 0.5 * sceneObj.moveDist * sin(POSE_TIME / period * 2 * M_PI), 0.0);
 	}
 
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
@@ -637,8 +646,8 @@ static void adjustSpecularShine(vec2 ss) {
 }
 
 static void adjustMoveSpeedDist(vec2 move_sd) {
-        sceneObjs[toolObj].moveSpeed=max(0.0f, sceneObjs[toolObj].moveSpeed + move_sd[0]);
-        sceneObjs[toolObj].moveDist=max(0.0f, sceneObjs[toolObj].moveDist+ move_sd[1]);
+        sceneObjs[toolObj].moveSpeed=max(0.0f, sceneObjs[toolObj].moveSpeed + move_sd[0]*0.02f);
+        sceneObjs[toolObj].moveDist=max(0.0f, sceneObjs[toolObj].moveDist+ move_sd[1]*0.02f);
 }
 
 static void lightMenu(int id) {
@@ -747,14 +756,12 @@ static void mainmenu(int id) {
     }
     // Set animated object to bounce
     if (id == 60 && currObject >= 0) {
-        //animationBounce == 1;
+        animType = 1;
     }
-    
     // Stop animated object to bounce
     if (id == 61 && currObject >= 0) {
-        //animationBounce == 0;
+        animType = 0;
     }
-    
     // Pause the animation
     if (id == 58 && currObject >= 0) {
             pauseAnim = true; 
