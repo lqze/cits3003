@@ -142,6 +142,7 @@ void loadMeshIfNotAlreadyLoaded(int meshNumber) {
     const aiScene* scene = loadScene(meshNumber);
     scenes[meshNumber] = scene;
     aiMesh* mesh = scene->mMeshes[0];
+    //aiMesh* mesh = loadMesh(meshNumber);
     meshes[meshNumber] = mesh;
     
 
@@ -438,9 +439,10 @@ void init( void ) {
 
     // Objects 0, and 1 are the ground and the first light.
     addObject(0); // Square for the ground
-    sceneObjs[0].loc = vec4(0.0, 0.0, 0.0, 1.0);
+    sceneObjs[0].loc = vec4(0.0, 0.0, 0.0, -1.0);
     sceneObjs[0].scale = 10.0;
-    sceneObjs[0].angles[0] = 90.0; // Rotate it.
+    // rotate by -90, to fix lighting issue
+    sceneObjs[0].angles[0] = -90.0; // Rotate it.
     sceneObjs[0].texScale = 5.0; // Repeat the texture.
 
     addObject(55); // Sphere for the first light
@@ -487,19 +489,21 @@ void drawMesh(SceneObject sceneObj) {
     // Combine rotation around X Y Z axes
     mat4 rotatexyz = RotateX(sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) * RotateZ(sceneObj.angles[2]);
     
-    float POSE_TIME = 0.0;
+    float POSE_TIME = 0;
     vec4 displacement = 0;
-    float yFunc = 0; // the graph func
+    float yFunc = 0; // initialise sin function for y axis
     float numFrames = 0;
     // specify number of frames for animated objects
     if (sceneObj.meshId == 56) numFrames = 39;
-    if (sceneObj.meshId == 57) numFrames = 40;
-    if (sceneObj.meshId == 58) numFrames = 80;
+    if (sceneObj.meshId == 57) numFrames = 39;
+    if (sceneObj.meshId == 58) numFrames = 79;
+
     float period = sceneObj.moveDist / sceneObj.moveSpeed;
-    
+
+    float elapsedTime = 0.0;
+    float zFunc = 0;
     if (sceneObj.meshId >= 56) {
-    //printf("%f period, %f movedist, %f movespeed", period, sceneObj.moveDist, sceneObj.moveSpeed);
-		float elapsedTime = 0.0;
+    printf("%f movedist, %f movespeed\n", sceneObj.moveDist, sceneObj.moveSpeed);
 		if (pauseAnim == true) {
 			elapsedTime = float ( timeAtPause - animStartTime ) / 100.0;
 		}
@@ -507,15 +511,19 @@ void drawMesh(SceneObject sceneObj) {
 			elapsedTime = float ( glutGet(GLUT_ELAPSED_TIME) - animStartTime ) / 100.0;
 		}
 		POSE_TIME = fmod(elapsedTime, numFrames);
-        printf("%f POSE TIME, \t %f elapsed_time! \n", POSE_TIME, elapsedTime);
+        //printf("%f POSE TIME, \t %f elapsed_time! \n", POSE_TIME, elapsedTime);
+        //printf("%f PERIOD\n", period);
+                
+                zFunc = sceneObj.moveDist * sin(float(elapsedTime) / period * 0.5 * M_PI);
         
-        switch(animType){
-			case 1: yFunc = abs(0.5*sceneObj.moveDist * sin(POSE_TIME/40*2*M_PI)); break;
+                switch(animType){
+			case 1: yFunc = abs(zFunc); break;
 			default: yFunc = 0.0; break;
 		}
-        
-        //yFunc = abs(0.5*sceneObj.moveDist * sin(POSE_TIME/40*2*M_PI));
-		displacement = rotatexyz * vec4(0.0, yFunc, 0.5 * sceneObj.moveDist * sin(POSE_TIME / period * 2 * M_PI), 0.0);
+               // zFunc = 0.5 * sceneObj.moveDist * sin(float(elapsedTime) / period * 2 * M_PI)
+        //yFunc = abs(0.5*sceneObj.moveDist * sin(POSE_TIME/40*2*M_PI));a
+                
+	    	displacement = rotatexyz * vec4(0.0, yFunc, zFunc, 0.0);
 	}
 
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
@@ -751,8 +759,8 @@ static void mainmenu(int id) {
     // Part 2: animation functionality.
     // enabling pause and adjusting walk speed/dist
     if (id == 57 && currObject >= 0) {
-       setToolCallbacks(adjustMoveSpeedDist, mat2(24.0, 0.0, 0.0, 5.0),
-                        adjustMoveSpeedDist, mat2(24.0, 0.0, 0.0, 5.0));
+       setToolCallbacks(adjustMoveSpeedDist, mat2(50.0, 0.0, 0.0, 15.0),
+                        adjustMoveSpeedDist, mat2(50.0, 0.0, 0.0, 15.0));
     }
     // Set animated object to bounce
     if (id == 60 && currObject >= 0) {
