@@ -132,18 +132,20 @@ static void(*middCallback)(vec2) = &doNothingCallback;
 static int mouseX=0, mouseY=0;         // Updated in the mouse-passive-motion function.
 
 static vec2 currMouseXYscreen(float x, float y) { 
-    return vec2( x/windowWidth, (windowHeight-y)/windowHeight ); 
+    return vec2( x/windowWidth, ((float) windowHeight-y)/windowHeight ); 
 } 
 
 static void doToolUpdateXY(int x, int y) { 
+
     if (currButton == GLUT_LEFT_BUTTON || currButton == GLUT_MIDDLE_BUTTON) {
-        vec2 currPos = vec2(currMouseXYscreen(x,y));
+        vec2 currPos = vec2(currMouseXYscreen(x, y));
+        //
         if (currButton==GLUT_LEFT_BUTTON)        
             leftCallback(leftTrans * (currPos - prevPos));
         else
             middCallback(middTrans * (currPos - prevPos));
             
-        prevPos = currPos;
+        prevPos=currPos;
         glutPostRedisplay();
     }
 }
@@ -174,7 +176,7 @@ vec2 clickPrev;
 
 static void activateTool(int button) {
     currButton = button;
-    clickPrev = currMouseXYscreen(mouseX, mouseY);
+    prevPos = currMouseXYscreen(mouseX, mouseY); // fixed
 
     // std::cout << clickOrigin << std::endl;  // For debugging
 }
@@ -184,3 +186,4 @@ static void deactivateTool() {
 }
 
 //-------------------------------------------------------------
+	
